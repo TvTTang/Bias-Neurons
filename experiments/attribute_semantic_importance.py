@@ -30,6 +30,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num-batch", default=1, type=int)
     parser.add_argument("--gpus", default="0")
     parser.add_argument("--no-cuda", action="store_true")
+    parser.add_argument(
+        "--do-lower-case",
+        action="store_true",
+        help="Enable only when the model/tokenizer is uncased.",
+    )
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--top-k", default=100, type=int)
@@ -188,7 +193,9 @@ def main() -> None:
         torch.cuda.manual_seed_all(args.seed)
 
     tokenizer = BertTokenizer.from_pretrained(
-        str(args.model_path), local_files_only=True
+        str(args.model_path),
+        do_lower_case=args.do_lower_case,
+        local_files_only=True,
     )
     model = BertForMaskedLM.from_pretrained(str(args.model_path))
     model.to(device)
@@ -320,6 +327,7 @@ def main() -> None:
         "model_path": str(args.model_path.resolve()),
         "device": str(device),
         "seed": args.seed,
+        "do_lower_case": args.do_lower_case,
         "num_examples": len(records),
         "num_layers": num_layers,
         "neurons_per_layer": neurons_per_layer,

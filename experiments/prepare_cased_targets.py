@@ -29,6 +29,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--modifier", default="N")
     parser.add_argument("--tokenizer-path", required=True, type=Path)
     parser.add_argument("--output-root", required=True, type=Path)
+    parser.add_argument(
+        "--do-lower-case",
+        action="store_true",
+        help="Enable only for uncased tokenizer/model pairs.",
+    )
     return parser.parse_args()
 
 
@@ -103,7 +108,9 @@ def main() -> None:
     from transformers import BertTokenizer
 
     tokenizer = BertTokenizer.from_pretrained(
-        str(args.tokenizer_path), local_files_only=True
+        str(args.tokenizer_path),
+        do_lower_case=args.do_lower_case,
+        local_files_only=True,
     )
     target_ids: Dict[str, int] = {}
     for _, corrected_target in mappings:
@@ -157,6 +164,7 @@ def main() -> None:
         "dimension": args.dimension,
         "modifier": args.modifier,
         "tokenizer_path": str(args.tokenizer_path.resolve()),
+        "do_lower_case": args.do_lower_case,
         "groups": records,
     }
     manifest_path = args.output_root / "manifest.json"

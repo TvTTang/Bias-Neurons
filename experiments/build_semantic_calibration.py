@@ -41,6 +41,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-tokens", default=64, type=int)
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument(
+        "--do-lower-case",
+        action="store_true",
+        help="Enable only for an uncased tokenizer; cased models keep the default false.",
+    )
+    parser.add_argument(
         "--source-url",
         default=(
             "https://s3.amazonaws.com/research.metamind.io/"
@@ -232,7 +237,9 @@ def main() -> None:
     from transformers import BertTokenizer
 
     tokenizer = BertTokenizer.from_pretrained(
-        str(args.tokenizer_path), local_files_only=True
+        str(args.tokenizer_path),
+        do_lower_case=args.do_lower_case,
+        local_files_only=True,
     )
     terms, term_hashes = load_filter_terms(
         args.demographic_dict, args.lexicon_files
@@ -277,6 +284,7 @@ def main() -> None:
         "seed": args.seed,
         "tokenizer_path": str(args.tokenizer_path.resolve()),
         "tokenizer_vocab_size": len(tokenizer),
+        "do_lower_case": args.do_lower_case,
         "min_tokens": args.min_tokens,
         "max_tokens": args.max_tokens,
         "filter_term_count": len(terms),
