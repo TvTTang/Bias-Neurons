@@ -1,0 +1,167 @@
+{
+  "code_commit": "f5ca97b",
+  "external_evaluation": {
+    "benchmark": "CrowS-Pairs official common-token pseudo-log-likelihood",
+    "dataset_sha256": "dfb36986ce0502abbaf7055b9176da3d08d48e07df1251991b5dfbcbceab9d0c",
+    "evaluated_after_freezing": true,
+    "results": {
+      "ethnicity": {
+        "baseline_biased_to_intervention_unbiased": 0,
+        "baseline_crows_score": 0.5465116279069767,
+        "baseline_mean_stereotype_margin": 0.24626475485630495,
+        "crows_score_change": 0.003875968992248062,
+        "crows_score_reduction": -0.003875968992248062,
+        "intervention_crows_score": 0.5503875968992248,
+        "intervention_mean_stereotype_margin": 0.24570217311613574,
+        "mcnemar_exact_pvalue": 0.5,
+        "num_pairs": 516,
+        "paired_bootstrap_change_95ci": [
+          0.0,
+          0.009689922480620155
+        ],
+        "result_csv_sha256": "8d0c83783f2fd289e2d9cb4d04974ca0e8d7746e51955b8b0a03d2dac999f026",
+        "summary_sha256": "10cbfdb40b113432fe2187b86728162af01f0306f1b791d2ca11d8c26a90b2ed",
+        "unbiased_to_intervention_biased": 2
+      },
+      "gender": {
+        "baseline_biased_to_intervention_unbiased": 0,
+        "baseline_crows_score": 0.5763358778625954,
+        "baseline_mean_stereotype_margin": -0.12776746079660514,
+        "crows_score_change": 0.0,
+        "crows_score_reduction": 0.0,
+        "intervention_crows_score": 0.5763358778625954,
+        "intervention_mean_stereotype_margin": -0.12791370282222286,
+        "mcnemar_exact_pvalue": 1.0,
+        "num_pairs": 262,
+        "paired_bootstrap_change_95ci": [
+          0.0,
+          0.0
+        ],
+        "result_csv_sha256": "415b9cb63627bcc1ff9b3387b2b43d112c4b687a2277de4be7bcc2cd5144163c",
+        "summary_sha256": "1df82c1f29492086baa54174b562233322d51c025958431d2197ba98a03d5bf5",
+        "unbiased_to_intervention_biased": 0
+      },
+      "religion": {
+        "baseline_biased_to_intervention_unbiased": 0,
+        "baseline_crows_score": 0.6666666666666666,
+        "baseline_mean_stereotype_margin": 1.6239802191767752,
+        "crows_score_change": 0.0,
+        "crows_score_reduction": 0.0,
+        "intervention_crows_score": 0.6666666666666666,
+        "intervention_mean_stereotype_margin": 1.6239842604308123,
+        "mcnemar_exact_pvalue": 1.0,
+        "num_pairs": 105,
+        "paired_bootstrap_change_95ci": [
+          0.0,
+          0.0
+        ],
+        "result_csv_sha256": "4636d3b3ffa3529dd3ce390d404b28b1c03c085188c412c291dcf5dd9b4faa6a",
+        "summary_sha256": "6bd6273c062591cadc285faddaf0c202751d6f278e568664f591e59584ed3aeb",
+        "unbiased_to_intervention_biased": 0
+      }
+    }
+  },
+  "frozen_validation": {
+    "constraints": {
+      "max_mean_kl": 0.0001,
+      "max_nll_increase": 0.005,
+      "min_environment_bias_reduction": 0.0,
+      "min_target_probability_retention": 0.95,
+      "min_top1_agreement": 0.995
+    },
+    "ethnicity": {
+      "candidate_id": "stability-0p75_lambda-0p25_k-2_scale-0",
+      "environment_bias_reductions": {
+        "iid": 0.00644629019313725,
+        "lexical_ood": 0.12925471264421418,
+        "template_ood": 0.009120042794305228
+      },
+      "frozen_manifest_sha256": "b359c57c1416de68d4c9c0d2551feb7b5dc1b9e3f6dee485b5c95b7e2af50c7b",
+      "intervention_scale": 0.0,
+      "mean_kl_from_baseline": 0.000012565078493258306,
+      "neurons": [
+        [
+          8,
+          1249
+        ],
+        [
+          7,
+          324
+        ]
+      ],
+      "nll_increase": -0.000030260216569821807,
+      "top1_agreement": 1.0
+    },
+    "gender": {
+      "candidate_id": "stability-0p75_lambda-0p25_k-8_scale-1p25",
+      "environment_bias_reductions": {
+        "iid": 0.12289897490375623,
+        "lexical_ood": 0.07793358097334957,
+        "template_ood": 0.11608795177926035
+      },
+      "frozen_manifest_sha256": "8d1a407e2ddcc40a665b52ea8fd4a7936ce65ac66739fca36b7ba1b091b46048",
+      "intervention_scale": 1.25,
+      "mean_kl_from_baseline": 0.00001048767175359372,
+      "neurons": [
+        [
+          7,
+          2551
+        ],
+        [
+          10,
+          1458
+        ],
+        [
+          9,
+          1763
+        ],
+        [
+          9,
+          2833
+        ],
+        [
+          8,
+          2282
+        ],
+        [
+          9,
+          1864
+        ],
+        [
+          7,
+          2020
+        ],
+        [
+          9,
+          1256
+        ]
+      ],
+      "nll_increase": 0.00006328858899262713,
+      "top1_agreement": 0.998046875
+    },
+    "religion": {
+      "candidate_id": "stability-0p75_lambda-0p25_k-2_scale-0p5",
+      "environment_bias_reductions": {
+        "iid": 0.04419549567263481,
+        "lexical_ood": 0.005369082940320458,
+        "template_ood": 0.042985883512037804
+      },
+      "frozen_manifest_sha256": "6a0c8965fb05c305987142f3df99ac7496036692e0fe522adb1f7d04fc471433",
+      "intervention_scale": 0.5,
+      "mean_kl_from_baseline": 0.000009183417936329923,
+      "neurons": [
+        [
+          8,
+          1113
+        ],
+        [
+          7,
+          2039
+        ]
+      ],
+      "nll_increase": -0.00005448317116263368,
+      "top1_agreement": 1.0
+    },
+    "selection_metric": "maximize minimum bias reduction over IID, lexical-OOD, and template-OOD validation environments"
+  }
+}
