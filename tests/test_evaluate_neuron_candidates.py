@@ -47,6 +47,16 @@ class EvaluateNeuronCandidatesTest(unittest.TestCase):
             self.assertEqual(selected[0]["candidate_id"], "b")
             self.assertEqual(selected[0]["neurons"], [(3, 4)])
 
+    def test_duplicate_neuron_sets_are_evaluated_once(self):
+        candidates = [
+            {"candidate_id": "a", "neurons": [(1, 2), (3, 4)]},
+            {"candidate_id": "b", "neurons": [(1, 2), (3, 4)]},
+            {"candidate_id": "c", "neurons": [(5, 6)]},
+        ]
+        unique, mapping = MODULE.deduplicate_candidates(candidates)
+        self.assertEqual([item["candidate_id"] for item in unique], ["a", "c"])
+        self.assertEqual(mapping, {"a": "a", "b": "a", "c": "c"})
+
     def test_paired_prompt_mismatch_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

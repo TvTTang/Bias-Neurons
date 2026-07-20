@@ -92,6 +92,23 @@ def load_candidates(
     return candidates
 
 
+def deduplicate_candidates(
+    candidates: Sequence[Dict[str, object]]
+) -> Tuple[List[Dict[str, object]], Dict[str, str]]:
+    unique = []
+    key_to_representative = {}
+    candidate_to_representative = {}
+    for candidate in candidates:
+        key = tuple(candidate["neurons"])
+        representative = key_to_representative.get(key)
+        if representative is None:
+            representative = candidate["candidate_id"]
+            key_to_representative[key] = representative
+            unique.append(candidate)
+        candidate_to_representative[candidate["candidate_id"]] = representative
+    return unique, candidate_to_representative
+
+
 def load_bias_pairs(
     data_root: Path,
     dimension: str,
@@ -229,7 +246,10 @@ def main() -> None:
     model.eval()
 
     candidates = load_candidates(args.candidate_sets, args.candidate_id)
-    methods = [{"candidate_id": "baseline", "neurons": None}, *candidates]
+    unique_candidates, candidate_to_representative = deduplicate_candidates(
+        candidates
+    )
+    methods = [{"candidate_id": "baseline", "neurons": None}, *unique_candidates]
     bias_pairs = load_bias_pairs(
         args.bias_data_root,
         args.dimension,
@@ -329,19 +349,23 @@ def main() -> None:
                 flush=True,
             )
 
-    rows = []
+    representative_rows = {}
     for method in methods:
         candidate_id = method["candidate_id"]
         bias = summarize_bias(*bias_accumulators[candidate_id])
         semantic = summarize_semantic(*semantic_accumulators[candidate_id])
-        rows.append(
-            {
-                "candidate_id": candidate_id,
-                "num_neurons": len(method["neurons"] or []),
-                **bias,
-                **semantic,
-            }
-        )
+        representative_rows[candidate_id] = {
+            "candidate_id": candidate_id,
+            "num_neurons": len(method["neurons"] or []),
+            **bias,
+            **semantic,
+        }
+    rows = [representative_rows["baseline"]]
+    for candidate in candidates:
+        representative = candidate_to_representative[candidate["candidate_id"]]
+        row = dict(representative_rows[representative])
+        row["candidate_id"] = candidate["candidate_id"]
+        rows.append(row)
     baseline = rows[0]
     for row in rows:
         row["bias_absolute_gap_reduction"] = (
@@ -369,6 +393,8 @@ def main() -> None:
         "intervention": "set selected FFN activations to zero at [MASK]",
         "candidate_sets_path": str(args.candidate_sets.resolve()),
         "candidate_sets_sha256": sha256(args.candidate_sets),
+        "num_candidate_ids": len(candidates),
+        "num_unique_neuron_sets": len(unique_candidates),
         "bias_data_root": str(args.bias_data_root.resolve()),
         "semantic_file": str(args.semantic_file.resolve()),
         "semantic_file_sha256": sha256(args.semantic_file),
