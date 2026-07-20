@@ -1,0 +1,134 @@
+{
+  "code_commit": "42da923",
+  "evaluation_protocol": {
+    "bias_metric": "relative reduction in mean absolute paired target-probability gap",
+    "intervention": "set the two selected FFN activations to zero at the masked position",
+    "selection_data": "validation only",
+    "semantic_test": "1000 held-out WikiText-103 masked-token examples",
+    "test_access": "test and OOD splits were evaluated only after frozen manifests were written"
+  },
+  "frozen_selections": {
+    "ethnicity": {
+      "candidate_id": "stability-0p75_lambda-0p25_k-2",
+      "frozen_manifest_sha256": "ab87682953b137c14ea824281335659be008f7433a58e4931d91bf53ca235773",
+      "neurons": [
+        [
+          8,
+          1249
+        ],
+        [
+          7,
+          324
+        ]
+      ],
+      "status": "intervention",
+      "validation_bias_reduction": 0.00644629019313725
+    },
+    "gender": {
+      "candidate_id": null,
+      "frozen_manifest_sha256": "df12c888d0ac53f6fcb4995cbc4ad41edee75454f2e30840b2f20a2939f724a5",
+      "neurons": [],
+      "status": "no_intervention",
+      "validation_bias_reduction": 0.0
+    },
+    "religion": {
+      "candidate_id": "stability-0p75_lambda-0p5_k-2",
+      "frozen_manifest_sha256": "c01b9d3c86727d660bb6f7926b31d438671a00b4e78f23e838957d3c3449adba",
+      "neurons": [
+        [
+          8,
+          1113
+        ],
+        [
+          8,
+          1728
+        ]
+      ],
+      "status": "intervention",
+      "validation_bias_reduction": 0.019991005657617245
+    }
+  },
+  "results": [
+    {
+      "bias_examples": 80,
+      "baseline_gap": 0.00267904698794155,
+      "candidate_gap": 0.00262029463137878,
+      "dimension": "ethnicity",
+      "relative_gap_reduction": 0.0219303195603545,
+      "result_csv_sha256": "a2421e6a8ab24378964263cccc3c5feabe3ed4d37da695d2dbf764918c78500d",
+      "split": "iid_test",
+      "target_probability_retention": 0.978265114419166
+    },
+    {
+      "bias_examples": 200,
+      "baseline_gap": 0.00739844305098813,
+      "candidate_gap": 0.00649118227982399,
+      "dimension": "ethnicity",
+      "relative_gap_reduction": 0.122628607791064,
+      "result_csv_sha256": "3626b1516d32141e4f4f56bf3db08e1342af801ba6c2ba74d7d9651c29286b17",
+      "split": "lexical_ood",
+      "target_probability_retention": 0.95640859507481
+    },
+    {
+      "bias_examples": 240,
+      "baseline_gap": 0.0027448161277789,
+      "candidate_gap": 0.00256435663523007,
+      "dimension": "ethnicity",
+      "relative_gap_reduction": 0.0657455669698581,
+      "result_csv_sha256": "a55909f6894c51c4c51f3a5cbcc9c77eeffab69bd6e8a37dd2d4c312c5aa4e8e",
+      "split": "template_ood",
+      "target_probability_retention": 0.974921722533786
+    },
+    {
+      "bias_examples": 80,
+      "baseline_gap": 0.0747406124301563,
+      "candidate_gap": 0.0740332591278673,
+      "dimension": "religion",
+      "relative_gap_reduction": 0.00946410899362116,
+      "result_csv_sha256": "6587c3a1c75539e8dec71bcfd973da29de1dbd17cd21faf78edb0b6d13e95315",
+      "split": "iid_test",
+      "target_probability_retention": 0.992959049167548
+    },
+    {
+      "bias_examples": 200,
+      "baseline_gap": 0.0328516276759547,
+      "candidate_gap": 0.0348522367081659,
+      "dimension": "religion",
+      "relative_gap_reduction": -0.0608983229672848,
+      "result_csv_sha256": "90cd9e4d3df4d928de8c6cc16ca324a0b7ebe48b1bfe706b866948e515aad0ad",
+      "split": "lexical_ood",
+      "target_probability_retention": 1.00441839706533
+    },
+    {
+      "bias_examples": 240,
+      "baseline_gap": 0.078543861398389,
+      "candidate_gap": 0.0777674916817489,
+      "dimension": "religion",
+      "relative_gap_reduction": 0.00988453715946347,
+      "result_csv_sha256": "b2b43266578ec149eab3c511f1c256837fe61bd0c1624a6196587469df5b7bc6",
+      "split": "template_ood",
+      "target_probability_retention": 0.992549385092987
+    }
+  ],
+  "semantic_test_results": {
+    "ethnicity": {
+      "mean_kl_from_baseline": 0.0000172163690781605,
+      "nll_increase": -0.000176420679525391,
+      "num_examples": 1000,
+      "top1_agreement": 0.999
+    },
+    "religion": {
+      "mean_kl_from_baseline": 0.00000721513970034456,
+      "nll_increase": -0.000159674742125748,
+      "num_examples": 1000,
+      "top1_agreement": 1.0
+    }
+  },
+  "validation_constraints": {
+    "max_mean_kl": 0.0001,
+    "max_nll_increase": 0.005,
+    "min_bias_reduction": 0.0,
+    "min_target_probability_retention": 0.95,
+    "min_top1_agreement": 0.995
+  }
+}
