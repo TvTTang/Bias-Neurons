@@ -467,7 +467,7 @@ def main():
                     gap_tokens_info = {
                         "tokens": demo1_tokens_info['tokens'],
                         "gap_relation": demo1_relation + '-' + demo2_relation,
-                        "gold_obj": "Black - White",
+                        "gold_obj": f"{args.demographic1} - {args.demographic2}",
                     }
                     gap_res_rmb_dict = {
                         'ig2_gold_gap': ig2_gold_gap
