@@ -73,3 +73,25 @@ python experiments/summarize_gap_attributions.py \
 The released gap files are sparse and already threshold-filtered. The summary
 therefore labels its estimates as filtered, zero-imputed statistics; it does
 not misrepresent absent entries as observed dense signed attributions.
+
+## Neutral semantic calibration data
+
+Build deterministic neutral MLM examples from the official raw WikiText-103
+splits:
+
+```bash
+python experiments/build_semantic_calibration.py \
+  --train-file /path/to/wiki.train.raw \
+  --validation-file /path/to/wiki.valid.raw \
+  --test-file /path/to/wiki.test.raw \
+  --tokenizer-path /path/to/bert-base-cased \
+  --demographic-dict bias_neuron_data/demographic_dict.json \
+  --lexicon-files \
+    bias_neuron_data/100_random_neg_adjs.json \
+    bias_neuron_data/100_random_pos_adjs.json \
+  --output-dir /path/to/semantic_calibration
+```
+
+The builder excludes demographic and supplied sentiment terms, applies fixed
+WordPiece length bounds, masks only complete wordpieces, samples by stable
+content hashes, and records source/output SHA-256 values.
