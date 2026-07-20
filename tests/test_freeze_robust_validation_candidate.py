@@ -112,6 +112,23 @@ class FreezeRobustValidationCandidateTest(unittest.TestCase):
         )
         self.assertEqual(frozen["status"], "no_intervention")
 
+    def test_extra_environment_rows_are_ignored_after_shortlisting(self):
+        candidates = {"robust": self.candidates["robust"]}
+        rows = {
+            environment: [
+                row("robust", 0.1),
+                row("not_shortlisted", -0.1),
+            ]
+            for environment in MODULE.ENVIRONMENTS
+        }
+        assessed = MODULE.assess_robust_candidates(
+            self.baselines, rows, candidates, THRESHOLDS
+        )
+        self.assertEqual(
+            [candidate["candidate_id"] for candidate in assessed],
+            ["robust"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

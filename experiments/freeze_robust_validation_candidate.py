@@ -75,9 +75,11 @@ def assess_robust_candidates(
     }
     expected_ids = set(candidate_sets)
     for environment in ENVIRONMENTS:
-        if set(indexed[environment]) != expected_ids:
+        missing = expected_ids - set(indexed[environment])
+        if missing:
             raise ValueError(
-                f"Candidate IDs differ in environment {environment}."
+                f"Candidates are missing in environment {environment}: "
+                f"{sorted(missing)}"
             )
         if baselines[environment][
             "bias_mean_pair_target_probability"
