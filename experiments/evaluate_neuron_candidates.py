@@ -82,7 +82,18 @@ def load_candidates(
             parsed.append((neuron[0], neuron[1]))
         if len(set(parsed)) != len(parsed):
             raise ValueError(f"Candidate {candidate_id} contains duplicate neurons.")
-        candidates.append({"candidate_id": candidate_id, "neurons": parsed})
+        intervention_scale = float(value.get("intervention_scale", 0.0))
+        if not math.isfinite(intervention_scale) or intervention_scale < 0:
+            raise ValueError(
+                f"Candidate {candidate_id} has an invalid intervention scale."
+            )
+        candidates.append(
+            {
+                "candidate_id": candidate_id,
+                "neurons": parsed,
+                "intervention_scale": intervention_scale,
+            }
+        )
     if requested is not None:
         missing = requested - {item["candidate_id"] for item in candidates}
         if missing:
@@ -99,7 +110,10 @@ def deduplicate_candidates(
     key_to_representative = {}
     candidate_to_representative = {}
     for candidate in candidates:
-        key = tuple(candidate["neurons"])
+        key = (
+            tuple(candidate["neurons"]),
+            candidate["intervention_scale"],
+        )
         representative = key_to_representative.get(key)
         if representative is None:
             representative = candidate["candidate_id"]
@@ -249,7 +263,14 @@ def main() -> None:
     unique_candidates, candidate_to_representative = deduplicate_candidates(
         candidates
     )
-    methods = [{"candidate_id": "baseline", "neurons": None}, *unique_candidates]
+    methods = [
+        {
+            "candidate_id": "baseline",
+            "neurons": None,
+            "intervention_scale": 1.0,
+        },
+        *unique_candidates,
+    ]
     bias_pairs = load_bias_pairs(
         args.bias_data_root,
         args.dimension,
@@ -271,7 +292,7 @@ def main() -> None:
     }
     started = time.perf_counter()
 
-    def logits_for(tokens, neurons):
+    def logits_for(tokens, neurons, intervention_scale):
         ids, mask, types, position = prepare_prompt(
             tokens, tokenizer, args.max_seq_length
         )
@@ -283,13 +304,14 @@ def main() -> None:
                 tgt_pos=position,
                 tgt_layer=0,
                 imp_pos=neurons,
-                imp_op="remove" if neurons is not None else None,
+                imp_op="scale" if neurons is not None else None,
+                imp_scale=intervention_scale if neurons is not None else None,
             )
         return logits
 
     for example_index, (text, target1, target2) in enumerate(
         bias_pairs, start=1
-    ):
+        ):
         tokens = tokenizer.tokenize(text)
         target_ids = tokenizer.convert_tokens_to_ids([target1, target2])
         if (
@@ -298,7 +320,11 @@ def main() -> None:
         ):
             raise ValueError("Bias targets are unknown or map to the same token.")
         for method in methods:
-            logits = logits_for(tokens, method["neurons"])
+            logits = logits_for(
+                tokens,
+                method["neurons"],
+                method["intervention_scale"],
+            )
             probabilities = functional.softmax(logits[0], dim=0)
             probability1 = float(probabilities[target_ids[0]].item())
             probability2 = float(probabilities[target_ids[1]].item())
@@ -318,7 +344,11 @@ def main() -> None:
         baseline_probabilities = None
         baseline_prediction = None
         for method in methods:
-            logits = logits_for(tokens, method["neurons"])
+            logits = logits_for(
+                tokens,
+                method["neurons"],
+                method["intervention_scale"],
+            )
             probabilities = functional.softmax(logits[0], dim=0)
             prediction = int(torch.argmax(logits[0]).item())
             gold_probability = float(probabilities[target_id].item())
@@ -357,6 +387,7 @@ def main() -> None:
         representative_rows[candidate_id] = {
             "candidate_id": candidate_id,
             "num_neurons": len(method["neurons"] or []),
+            "intervention_scale": method["intervention_scale"],
             **bias,
             **semantic,
         }
@@ -390,7 +421,10 @@ def main() -> None:
         "model_path": str(args.model_path.resolve()),
         "device": str(device),
         "do_lower_case": args.do_lower_case,
-        "intervention": "set selected FFN activations to zero at [MASK]",
+        "intervention": (
+            "multiply selected FFN activations by each candidate's "
+            "intervention_scale at [MASK]"
+        ),
         "candidate_sets_path": str(args.candidate_sets.resolve()),
         "candidate_sets_sha256": sha256(args.candidate_sets),
         "num_candidate_ids": len(candidates),

@@ -41,6 +41,22 @@ def swish(x):
 ACT2FN = {"gelu": gelu, "relu": torch.nn.functional.relu, "swish": swish}
 
 
+def resolve_intervention_scale(imp_op, imp_scale=None):
+    """Resolve legacy and V3 FFN interventions to one activation scale."""
+    if imp_op == 'remove':
+        return 0.0
+    if imp_op == 'enhance':
+        return 2.0
+    if imp_op != 'scale':
+        return None
+    if imp_scale is None:
+        raise ValueError("imp_scale is required when imp_op='scale'.")
+    scale = float(imp_scale)
+    if not math.isfinite(scale) or scale < 0:
+        raise ValueError("imp_scale must be finite and non-negative.")
+    return scale
+
+
 class BertConfig(object):
 
     def __init__(self,
@@ -228,19 +244,19 @@ class BertIntermediate(nn.Module):
         self.dense = nn.Linear(config.hidden_size, config.intermediate_size)
         self.intermediate_act_fn = ACT2FN[config.hidden_act] if isinstance(config.hidden_act, str) else config.hidden_act
 
-    def forward(self, hidden_states, tgt_pos=None, tmp_score=None, imp_pos=None, imp_op=None):
+    def forward(self, hidden_states, tgt_pos=None, tmp_score=None, imp_pos=None,
+                imp_op=None, imp_scale=None):
         hidden_states = self.dense(hidden_states)
         hidden_states = self.intermediate_act_fn(hidden_states)  # [batch, max_len, nslot]
         if tmp_score is not None:
             hidden_states[:, tgt_pos, :] = tmp_score
         if imp_op == 'return':
             imp_weights = []
+        intervention_scale = resolve_intervention_scale(imp_op, imp_scale)
         if imp_pos is not None:
             for layer, pos in imp_pos:
-                if imp_op == 'remove':
-                    hidden_states[:, tgt_pos, pos] = 0.0
-                if imp_op == 'enhance':
-                    hidden_states[:, tgt_pos, pos] *= 2.0
+                if intervention_scale is not None:
+                    hidden_states[:, tgt_pos, pos] *= intervention_scale
                 if imp_op == 'return':
                     imp_weights.append(hidden_states[0, tgt_pos, pos].item())
 
@@ -271,12 +287,13 @@ class BertLayer(nn.Module):
         self.intermediate = BertIntermediate(config)
         self.output = BertOutput(config)
 
-    def forward(self, hidden_states, attention_mask, tgt_pos=None, tmp_score=None, imp_pos=None, imp_op=None):
+    def forward(self, hidden_states, attention_mask, tgt_pos=None, tmp_score=None,
+                imp_pos=None, imp_op=None, imp_scale=None):
         attention_output, att_score = self.attention(hidden_states, attention_mask)
         if imp_op == 'return':
-            intermediate_output, imp_weights = self.intermediate(attention_output, tgt_pos=tgt_pos, tmp_score=tmp_score, imp_pos=imp_pos, imp_op=imp_op)
+            intermediate_output, imp_weights = self.intermediate(attention_output, tgt_pos=tgt_pos, tmp_score=tmp_score, imp_pos=imp_pos, imp_op=imp_op, imp_scale=imp_scale)
         else:
-            intermediate_output = self.intermediate(attention_output, tgt_pos=tgt_pos, tmp_score=tmp_score, imp_pos=imp_pos, imp_op=imp_op)
+            intermediate_output = self.intermediate(attention_output, tgt_pos=tgt_pos, tmp_score=tmp_score, imp_pos=imp_pos, imp_op=imp_op, imp_scale=imp_scale)
         layer_output = self.output(intermediate_output, attention_output)
         if imp_op == 'return':
             return layer_output, intermediate_output, imp_weights
@@ -289,7 +306,8 @@ class BertEncoder(nn.Module):
         super(BertEncoder, self).__init__()
         self.layer = nn.ModuleList([BertLayer(config) for _ in range(config.num_hidden_layers)])
 
-    def forward(self, hidden_states, attention_mask, tgt_layer=None, tgt_pos=None, tmp_score=None, imp_pos=None, imp_op=None):
+    def forward(self, hidden_states, attention_mask, tgt_layer=None, tgt_pos=None,
+                tmp_score=None, imp_pos=None, imp_op=None, imp_scale=None):
         all_encoder_layers = []
         ffn_weights = None
         if imp_op == 'return':
@@ -301,15 +319,15 @@ class BertEncoder(nn.Module):
                 imp_pos_at_this_layer = None
             if imp_op == 'return':
                 if tgt_layer == layer_index:
-                    hidden_states, ffn_weights, imp_weights_l = layer_module(hidden_states, attention_mask, tgt_pos=tgt_pos, tmp_score=tmp_score, imp_pos=imp_pos_at_this_layer, imp_op=imp_op)
+                    hidden_states, ffn_weights, imp_weights_l = layer_module(hidden_states, attention_mask, tgt_pos=tgt_pos, tmp_score=tmp_score, imp_pos=imp_pos_at_this_layer, imp_op=imp_op, imp_scale=imp_scale)
                 else:
-                    hidden_states, _, imp_weights_l = layer_module(hidden_states, attention_mask, tgt_pos=tgt_pos, imp_pos=imp_pos_at_this_layer, imp_op=imp_op)
+                    hidden_states, _, imp_weights_l = layer_module(hidden_states, attention_mask, tgt_pos=tgt_pos, imp_pos=imp_pos_at_this_layer, imp_op=imp_op, imp_scale=imp_scale)
                 imp_weights.extend(imp_weights_l)
             else:
                 if tgt_layer == layer_index:
-                    hidden_states, ffn_weights = layer_module(hidden_states, attention_mask, tgt_pos=tgt_pos, tmp_score=tmp_score, imp_pos=imp_pos_at_this_layer, imp_op=imp_op)
+                    hidden_states, ffn_weights = layer_module(hidden_states, attention_mask, tgt_pos=tgt_pos, tmp_score=tmp_score, imp_pos=imp_pos_at_this_layer, imp_op=imp_op, imp_scale=imp_scale)
                 else:
-                    hidden_states, _ = layer_module(hidden_states, attention_mask, tgt_pos=tgt_pos, imp_pos=imp_pos_at_this_layer, imp_op=imp_op)
+                    hidden_states, _ = layer_module(hidden_states, attention_mask, tgt_pos=tgt_pos, imp_pos=imp_pos_at_this_layer, imp_op=imp_op, imp_scale=imp_scale)
         all_encoder_layers.append(hidden_states)
         if imp_op == 'return':
             return all_encoder_layers, ffn_weights, imp_weights
@@ -478,7 +496,9 @@ class BertModel(PreTrainedBertModel):
         self.encoder = BertEncoder(config)
         self.apply(self.init_bert_weights)
 
-    def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, tgt_pos=None, tgt_layer=None, tmp_score=None, imp_pos=None, imp_op=None):
+    def forward(self, input_ids=None, attention_mask=None, token_type_ids=None,
+                tgt_pos=None, tgt_layer=None, tmp_score=None, imp_pos=None,
+                imp_op=None, imp_scale=None):
         if attention_mask is None:
             attention_mask = torch.ones_like(input_ids)
         if token_type_ids is None:
@@ -497,7 +517,8 @@ class BertModel(PreTrainedBertModel):
                                         tgt_pos=tgt_pos,
                                         tmp_score=tmp_score,
                                         imp_pos=imp_pos,
-                                        imp_op=imp_op
+                                        imp_op=imp_op,
+                                        imp_scale=imp_scale
                                         )
         else:
             encoded_layers, ffn_weights = self.encoder(embedding_output,
@@ -506,7 +527,8 @@ class BertModel(PreTrainedBertModel):
                                         tgt_pos=tgt_pos,
                                         tmp_score=tmp_score,
                                         imp_pos=imp_pos,
-                                        imp_op=imp_op
+                                        imp_op=imp_op,
+                                        imp_scale=imp_scale
                                         )
         sequence_output = encoded_layers[-1]
         if imp_op == 'return':
@@ -523,16 +545,18 @@ class BertForMaskedLM(PreTrainedBertModel):
         self.cls = BertOnlyMLMHead(config, self.bert.embeddings.word_embeddings.weight)
         self.apply(self.init_bert_weights)
 
-    def forward(self, input_ids, token_type_ids=None, attention_mask=None, tgt_pos=None, tgt_layer=None, tmp_score=None, tgt_label=None, imp_pos=None, imp_op=None):
+    def forward(self, input_ids, token_type_ids=None, attention_mask=None,
+                tgt_pos=None, tgt_layer=None, tmp_score=None, tgt_label=None,
+                imp_pos=None, imp_op=None, imp_scale=None):
         if tmp_score is not None:
             batch_size = tmp_score.shape[0]
             input_ids = input_ids.repeat(batch_size, 1)
             token_type_ids = token_type_ids.repeat(batch_size, 1)
             attention_mask = attention_mask.repeat(batch_size, 1)
         if imp_op == 'return':
-            last_hidden, ffn_weights, imp_weights = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, tgt_pos=tgt_pos, tgt_layer=tgt_layer, tmp_score=tmp_score, imp_pos=imp_pos, imp_op=imp_op)  # (batch, max_len, hidden_size), (batch, max_len, ffn_size), (n_imp_pos)
+            last_hidden, ffn_weights, imp_weights = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, tgt_pos=tgt_pos, tgt_layer=tgt_layer, tmp_score=tmp_score, imp_pos=imp_pos, imp_op=imp_op, imp_scale=imp_scale)  # (batch, max_len, hidden_size), (batch, max_len, ffn_size), (n_imp_pos)
         else:
-            last_hidden, ffn_weights = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, tgt_pos=tgt_pos, tgt_layer=tgt_layer, tmp_score=tmp_score, imp_pos=imp_pos, imp_op=imp_op)  # (batch, max_len, hidden_size), (batch, max_len, ffn_size)
+            last_hidden, ffn_weights = self.bert(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, tgt_pos=tgt_pos, tgt_layer=tgt_layer, tmp_score=tmp_score, imp_pos=imp_pos, imp_op=imp_op, imp_scale=imp_scale)  # (batch, max_len, hidden_size), (batch, max_len, ffn_size)
         last_hidden = last_hidden[:, tgt_pos, :]  # (batch, hidden_size)
         ffn_weights = ffn_weights[:, tgt_pos, :]  # (batch, ffn_size)
         tgt_logits = self.cls(last_hidden)  # (batch, n_vocab)
