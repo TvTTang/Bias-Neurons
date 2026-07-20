@@ -132,24 +132,40 @@ def choose_bag_neurons(
     adaptive_rounds: int,
     target_min: float,
     target_max: float,
-) -> Tuple[float, float, List[List[Position]]]:
+) -> Tuple[
+    float,
+    float,
+    List[List[Position]],
+    bool,
+    List[Dict[str, float]],
+]:
     ratio = initial_ratio
     bag_neurons: List[List[Position]] = []
     average = 0.0
+    trajectory = []
 
-    for _ in range(adaptive_rounds):
+    for round_index in range(adaptive_rounds):
         bag_neurons = [
             select_by_frequency(counts, size, ratio, minimum)
             for counts, size in zip(bag_counts, bag_sizes)
         ]
         average = sum(map(len, bag_neurons)) / len(bag_neurons)
+        trajectory.append(
+            {
+                "round": round_index + 1,
+                "mode_ratio_bag": ratio,
+                "average_neurons_per_bag": average,
+            }
+        )
         if average < target_min:
             ratio -= 0.05
         elif average > target_max:
             ratio += 0.05
         else:
             break
-    return ratio, average, bag_neurons
+    converged = target_min <= average <= target_max
+    selected_ratio = trajectory[-1]["mode_ratio_bag"]
+    return selected_ratio, average, bag_neurons, converged, trajectory
 
 
 def relation_name(path: Path) -> str:
@@ -177,7 +193,7 @@ def main() -> None:
     bag_counts, bag_sizes, metric = read_bag_counts(
         args.input, args.metric, args.threshold_ratio
     )
-    bag_ratio, average, bag_neurons = choose_bag_neurons(
+    bag_ratio, average, bag_neurons, converged, trajectory = choose_bag_neurons(
         bag_counts=bag_counts,
         bag_sizes=bag_sizes,
         initial_ratio=args.mode_ratio_bag,
@@ -212,6 +228,10 @@ def main() -> None:
         "mode_ratio_bag_selected": bag_ratio,
         "mode_ratio_rel": args.mode_ratio_rel,
         "min_bag_count": args.min_bag_count,
+        "target_neurons_per_bag_min": args.target_min,
+        "target_neurons_per_bag_max": args.target_max,
+        "selection_converged": converged,
+        "selection_trajectory": trajectory,
         "average_neurons_per_bag": average,
         "relation_neuron_count": len(relation_neurons),
         "relation_neurons": relation_neurons,

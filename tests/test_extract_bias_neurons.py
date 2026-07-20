@@ -41,8 +41,10 @@ class ExtractBiasNeuronsTest(unittest.TestCase):
                     handle.write(json.dumps(bag) + "\n")
 
             counts, sizes, metric = MODULE.read_bag_counts(path, "auto", 0.2)
-            ratio, average, selected = MODULE.choose_bag_neurons(
+            ratio, average, selected, converged, trajectory = (
+                MODULE.choose_bag_neurons(
                 counts, sizes, 0.7, 3, 6, 2.0, 5.0
+                )
             )
 
         self.assertEqual(metric, "ig2_gold_gap")
@@ -50,6 +52,31 @@ class ExtractBiasNeuronsTest(unittest.TestCase):
         self.assertEqual(ratio, 0.7)
         self.assertEqual(average, 2.0)
         self.assertEqual(selected[0], [(10, 7), (11, 9)])
+        self.assertTrue(converged)
+        self.assertEqual(len(trajectory), 1)
+
+    def test_non_convergence_is_reported_without_changing_iterations(self):
+        counts = [MODULE.Counter({"0@0": 5, "0@1": 5})]
+        ratio, average, selected, converged, trajectory = (
+            MODULE.choose_bag_neurons(
+                counts,
+                [5],
+                initial_ratio=0.95,
+                minimum=0,
+                adaptive_rounds=2,
+                target_min=1.0,
+                target_max=1.0,
+            )
+        )
+
+        self.assertEqual(ratio, 1.0)
+        self.assertEqual(average, 2.0)
+        self.assertEqual(selected, [[(0, 0), (0, 1)]])
+        self.assertFalse(converged)
+        self.assertEqual(
+            [item["average_neurons_per_bag"] for item in trajectory],
+            [2.0, 2.0],
+        )
 
     def test_released_legacy_metric_name_is_supported(self):
         result = {"ig_gold_gap": [[1, 2, 0.5]]}
