@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+
+# Experiment outputs are stored outside the source tree on AutoDL.
+runs/
+experiment_outputs/
